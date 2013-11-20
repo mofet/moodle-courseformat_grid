@@ -27,24 +27,26 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot . '/course/format/grid/lib.php');
 
 /**
- * restore plugin class that provides the necessary information
- * needed to restore one topcoll course format
+ * Restore plugin class that provides the necessary information
+ * needed to restore one grid format course.
  */
 class restore_format_grid_plugin extends restore_format_plugin {
 
     /**
-     * Returns the paths to be handled by the plugin at course level
+     * Returns the paths to be handled by the plugin at course level.
      */
     protected function define_course_plugin_structure() {
 
         $paths = array();
 
-        // Add own format stuff
+        // Add own format stuff.
         $elename = 'grid'; // This defines the postfix of 'process_*' below.
-        $elepath = $this->get_pathfor('/'); // This is defines the nested tag within 'plugin_format_grid_course' to allow '/course/plugin_format_grid_course' in the path therefore as a path structure representing the levels in section.xml in the backup file.
+        /* This is defines the nested tag within 'plugin_format_grid_course' to allow '/course/plugin_format_grid_course' in the path
+           therefore as a path structure representing the levels in section.xml in the backup file. */
+        $elepath = $this->get_pathfor('/');
         $paths[] = new restore_path_element($elename, $elepath);
 
-        return $paths; // And we return the interesting paths
+        return $paths; // And we return the interesting paths.
     }
 
     /**
@@ -56,11 +58,8 @@ class restore_format_grid_plugin extends restore_format_plugin {
 
         $data = (object) $data;
 
-		//print('Process Course');
-        //print_object($data);
-
-        // We only process this information if the course we are restoring to
-        // has 'grid' format (target format can change depending of restore options)
+        /* We only process this information if the course we are restoring to
+           has 'grid' format (target format can change depending of restore options). */
         $format = $DB->get_field('course', 'format', array('id' => $this->task->get_courseid()));
         if ($format != 'grid') {
             return;
@@ -68,20 +67,17 @@ class restore_format_grid_plugin extends restore_format_plugin {
 
         $data->courseid = $this->task->get_courseid();
 
-		//print_object($data);  //  format_grid_summary.
         if (!$DB->insert_record('format_grid_summary', $data)) {
             throw new moodle_exception('invalidrecordid', 'format_grid', '',
                 'Could not set summary status. Grid format database is not ready. An admin must visit the notifications section.');
         }
-		
 
-        // No need to annotate anything here
+        // No need to annotate anything here.
     }
 
     protected function after_execute_structure() {
-        
     }
-	
+
 	    /**
      * Returns the paths to be handled by the plugin at section level
      */
@@ -91,12 +87,14 @@ class restore_format_grid_plugin extends restore_format_plugin {
 
         // Add own format stuff
         $elename = 'gridsection'; // This defines the postfix of 'process_*' below.
-        $elepath = $this->get_pathfor('/'); // This is defines the nested tag within 'plugin_format_grid_section' to allow '/section/plugin_format_grid_section' in the path therefore as a path structure representing the levels in section.xml in the backup file.
+        /* This is defines the nested tag within 'plugin_format_grid_section' to allow '/section/plugin_format_grid_section' in the path therefore as
+           a path structure representing the levels in section.xml in the backup file. */
+        $elepath = $this->get_pathfor('/');
         $paths[] = new restore_path_element($elename, $elepath);
 
         return $paths; // And we return the interesting paths
     }
-	
+
     /**
      * Process the 'plugin_format_grid_section' element within the 'section' element in the 'section.xml' file in the '/sections/section_sectionid' folder
      * of the zipped backup 'mbz' file.
@@ -111,11 +109,8 @@ class restore_format_grid_plugin extends restore_format_plugin {
 
         $data = (object) $data;
 
-		//print('Process Section '.$this->task->get_sectionid());
-        //print_object($data);
-
-        // We only process this information if the course we are restoring to
-        // has 'grid' format (target format can change depending of restore options)
+        /* We only process this information if the course we are restoring to
+           has 'grid' format (target format can change depending of restore options). */
         $format = $DB->get_field('course', 'format', array('id' => $this->task->get_courseid()));
         if ($format != 'grid') {
             return;
@@ -124,12 +119,24 @@ class restore_format_grid_plugin extends restore_format_plugin {
         $data->courseid = $this->task->get_courseid();
         $data->sectionid = $this->task->get_sectionid();
 
+        if (!$DB->record_exists('format_grid_icon', array('courseid' => $data->courseid, 'sectionid' => $data->sectionid))) {
         if (!$DB->insert_record('format_grid_icon', $data, true)) {
             throw new moodle_exception('invalidrecordid', 'format_grid', '',
-                'Could not create icon. Grid format database is not ready. An admin must visit the notifications section.');
+                    'Could not insert icon. Grid format table format_grid_icon is not ready. An administrator must visit the notifications section.');
+        }
+        } else {
+            global $PAGE;
+            $old = $DB->get_record('format_grid_icon', array('courseid' => $data->courseid, 'sectionid' => $data->sectionid));
+            if ((is_null($old->imagepath)) && (strcmp($PAGE->pagetype, 'backup-restore') == 0)) {
+                // Update the record to use this icon as we are restoring not importing and no icon exists already.
+                $data->id = $old->id;
+                if (!$DB->update_record('format_grid_icon', $data)) {
+                    throw new moodle_exception('invalidrecordid', 'format_grid', '',
+                        'Could not update icon. Grid format table format_grid_icon is not ready. An administrator must visit the notifications section.');
+                }
+            }
         }
 
-        // No need to annotate anything here
-    }	
-
+        // No need to annotate anything here.
+    }
 }

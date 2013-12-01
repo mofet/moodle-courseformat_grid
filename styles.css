@@ -216,3 +216,6 @@ body.jsenabled #gridshadebox_content.hide_content {
 }
 
 /* @end */
+.dir-rtl #gridiconcontainer ul.gridicons li {
+  text-align:right;
+}
